@@ -9,7 +9,7 @@ import io
 st.set_page_config(page_title="Audit DAT", layout="centered")
 
 st.title("🛡️ Audit Automatique de DAT")
-st.write("Analyse technique automatique des documents d'architecture")
+st.write("Analyse technique et conformité des documents d'architecture")
 
 # ================================
 # UPLOAD
@@ -20,7 +20,7 @@ uploaded_file = st.file_uploader(
 )
 
 # ================================
-# ANALYSE
+# TRAITEMENT
 # ================================
 if uploaded_file is not None:
 
@@ -28,97 +28,98 @@ if uploaded_file is not None:
 
     texte = ""
 
-    # ============================
+    # ================================
     # LECTURE WORD
-    # ============================
+    # ================================
     if uploaded_file.name.endswith(".docx"):
 
         with st.spinner("Lecture du document Word..."):
             doc = Document(uploaded_file)
             texte = "\n".join([p.text for p in doc.paragraphs])
 
-        st.subheader("📄 Contenu extrait")
-        st.text_area("", texte, height=250)
-
-    # ============================
-    # PDF (placeholder)
-    # ============================
     elif uploaded_file.name.endswith(".pdf"):
         st.warning("Lecture PDF non encore implémentée")
 
-    # ============================
-    # ANALYSE INTELLIGENTE
-    # ============================
-    with st.spinner("Analyse du DAT en cours..."):
+    texte_min = texte.lower()
 
-        score = 100
-        risques = []
-        commentaires = []
+    # ================================
+    # 🔎 RESUME STRUCTURE DU DAT
+    # ================================
+    st.subheader("📄 Analyse complète du DAT")
 
-        t = texte.lower()
+    resume_points = []
 
-        # ============================
-        # RÈGLES DE CONTRÔLE
-        # ============================
+    with st.spinner("Analyse du contenu en cours..."):
 
-        # Sécurité
-        if "dmz" in t:
-            commentaires.append("DMZ détectée ✔️")
+        # INFRA
+        if "serveur" in texte_min or "server" in texte_min:
+            resume_points.append(("✔ Architecture serveur identifiée", "success"))
         else:
-            risques.append("DMZ non mentionnée")
+            resume_points.append(("❌ Aucune architecture serveur clairement décrite", "error"))
+
+        # RESEAU
+        if "dmz" in texte_min:
+            resume_points.append(("✔ Zone DMZ mentionnée", "success"))
+        else:
+            resume_points.append(("❌ DMZ non définie", "error"))
+
+        if "firewall" in texte_min or "pare-feu" in texte_min:
+            resume_points.append(("✔ Firewall présent", "success"))
+        else:
+            resume_points.append(("❌ Firewall absent", "error"))
+
+        # DONNEES
+        if "base de données" in texte_min or "database" in texte_min:
+            resume_points.append(("✔ Base de données identifiée", "success"))
+        else:
+            resume_points.append(("❌ Base de données non décrite", "error"))
+
+        # BACKUP
+        if "backup" in texte_min or "sauvegarde" in texte_min:
+            resume_points.append(("✔ Sauvegarde mentionnée", "success"))
+        else:
+            resume_points.append(("❌ Sauvegarde absente", "error"))
+
+        # SECURITE
+        if "tls" in texte_min or "ssl" in texte_min or "chiffrement" in texte_min:
+            resume_points.append(("✔ Chiffrement des échanges présent", "success"))
+        else:
+            resume_points.append(("❌ Chiffrement non mentionné", "error"))
+
+        # FLUX RISQUE
+        if "internet" in texte_min and "database" in texte_min:
+            resume_points.append(("⚠️ Flux Internet direct vers base de données détecté", "warning"))
+
+    # AFFICHAGE
+    for msg, level in resume_points:
+        if level == "success":
+            st.success(msg)
+        elif level == "warning":
+            st.warning(msg)
+        else:
+            st.error(msg)
+
+    # ================================
+    # SCORE GLOBAL
+    # ================================
+    score = 100
+
+    for msg, level in resume_points:
+        if level == "error":
             score -= 15
-
-        if "firewall" not in t and "pare-feu" not in t:
-            risques.append("Absence de firewall")
-            score -= 15
-
-        # Base de données
-        if "database" in t or "base de données" in t:
-            commentaires.append("Base de données identifiée ✔️")
-
-        # Chiffrement
-        if "chiffrement" not in t and "tls" not in t:
-            risques.append("Chiffrement non mentionné")
-            score -= 10
-
-        # Backup
-        if "backup" not in t and "sauvegarde" not in t:
-            risques.append("Sauvegarde non documentée")
-            score -= 10
-
-        # Flux réseau dangereux (simple détection)
-        if "internet" in t and "database" in t:
-            risques.append("⚠️ Flux Internet direct vers base de données")
+        elif level == "warning":
             score -= 25
 
-    # ================================
-    # RESULTATS
-    # ================================
-    st.success("Analyse terminée ✔️")
+    score = max(score, 0)
 
     st.metric("📊 Score de conformité DAT", f"{score}/100")
 
-    # Risques
-    st.subheader("⚠️ Risques détectés")
-
-    if risques:
-        for r in risques:
-            st.error(r)
-    else:
-        st.success("Aucun risque majeur détecté")
-
-    # Commentaires positifs
-    st.subheader("✅ Éléments conformes")
-
-    for c in commentaires:
-        st.info(c)
-
     # ================================
-    # TABLEAU RÉSUMÉ
+    # TABLEAU SYNTHÈSE
     # ================================
     df = pd.DataFrame({
-        "Indicateur": ["Score", "Risques", "Commentaires"],
-        "Valeur": [score, len(risques), len(commentaires)]
+        "Check": [p[0] for p in resume_points],
+        "Statut": [p[1] for p in resume_points]
     })
 
     st.subheader("📊 Synthèse")
@@ -132,7 +133,7 @@ if uploaded_file is not None:
     output.seek(0)
 
     st.download_button(
-        "📥 Télécharger le rapport Excel",
+        "📥 Télécharger rapport Excel",
         data=output,
         file_name="Audit_DAT.xlsx"
     )
