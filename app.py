@@ -4,7 +4,10 @@ import pandas as pd
 st.title("🛡️ Validateur de DAT")
 st.write("Uploadez votre document pour une analyse technique automatique.")
 
-uploaded_file = st.file_uploader("Choisir un fichier DAT (PDF)", type="pdf")
+uploaded_file = st.file_uploader(
+    "Choisir un fichier DAT (Word ou PDF)", 
+    type=["pdf", "docx"]
+)
 
 if uploaded_file is not None:
     st.success("Fichier reçu ! Analyse en cours...")
