@@ -1,29 +1,26 @@
 import streamlit as st
 from docx import Document
-from openai import OpenAI
+from openai import OpenAI, RateLimitError
 
 st.set_page_config(page_title="Audit DAT IA", layout="centered")
 
 st.title("🛡️ Audit DAT Intelligent")
 
-# 🔑 IA client (Streamlit secrets)
+# 🔑 IA client
 client = OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
 
+
+# ✅ Cache pour éviter appels multiples
+@st.cache_data(show_spinner=False)
 def analyser_dat(texte):
 
-    response = client.chat.completions.create(
-        model="gpt-4o-mini",
-        messages=[
-            {
-                "role": "system",
-                "content": "Tu es un expert en architecture IT et cybersécurité."
-            },
-            {
-                "role": "user",
-                "content": f"""
-Analyse ce DAT :
+    try:
+        response = client.responses.create(
+            model="gpt-4o-mini",
+            input=f"""
+Tu es un expert en architecture IT et cybersécurité.
 
-Donne :
+Analyse ce DAT et donne :
 - résumé
 - architecture
 - risques sécurité
@@ -33,11 +30,12 @@ Donne :
 DOCUMENT:
 {texte}
 """
-            }
-        ]
-    )
+        )
 
-    return response.choices[0].message.content
+        return response.output[0].content[0].text
+
+    except RateLimitError:
+        return "⚠️ Limite API atteinte. Réessaye dans quelques secondes."
 
 
 # 📂 Upload fichier
@@ -50,8 +48,11 @@ if uploaded_file:
 
     st.success("Fichier chargé ✔️")
 
-    with st.spinner("Analyse IA en cours..."):
-        resultat = analyser_dat(texte)
+    # ✅ Bouton pour éviter spam API
+    if st.button("🔍 Lancer l’analyse"):
 
-    st.subheader("🧠 Résultat IA")
-    st.write(resultat)
+        with st.spinner("Analyse IA en cours..."):
+            resultat = analyser_dat(texte)
+
+        st.subheader("🧠 Résultat IA")
+        st.write(resultat)
