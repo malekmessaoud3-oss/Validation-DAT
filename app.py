@@ -6,12 +6,11 @@ st.set_page_config(page_title="Audit DAT IA", layout="centered")
 
 st.title("🛡️ Audit DAT Intelligent")
 
-# 🔑 IA client
 client = OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
 
-
-# ✅ Cache pour éviter appels multiples
-@st.cache_data(show_spinner=False)
+# ==============================
+# FONCTION IA
+# ==============================
 def analyser_dat(texte):
 
     try:
@@ -35,10 +34,12 @@ DOCUMENT:
         return response.output[0].content[0].text
 
     except RateLimitError:
-        return "⚠️ Limite API atteinte. Réessaye dans quelques secondes."
+        return "⚠️ Limite API atteinte. Réessayez dans quelques secondes."
 
 
-# 📂 Upload fichier
+# ==============================
+# UPLOAD FICHIER
+# ==============================
 uploaded_file = st.file_uploader("Uploader un DAT Word", type=["docx"])
 
 if uploaded_file:
@@ -48,7 +49,6 @@ if uploaded_file:
 
     st.success("Fichier chargé ✔️")
 
-    # ✅ Bouton pour éviter spam API
     if st.button("🔍 Lancer l’analyse"):
 
         with st.spinner("Analyse IA en cours..."):
